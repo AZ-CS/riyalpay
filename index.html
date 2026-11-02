@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ريال باي (RiyalPay) – إدارة ميزانية وأهداف الطالب</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- مكتبات Firebase السحابية -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <script>
     tailwind.config = {
       theme: {
@@ -78,7 +83,7 @@
         <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">
           💳 ريال <span class="text-indigo-400">باي</span>
         </h1>
-        <p class="mt-1 text-sm text-slate-400">أهلاً بك يا <span id="userDisplayName" class="font-semibold text-indigo-300"></span>! نظم ميزانيتك بكل ذكاء.</p>
+        <p class="mt-1 text-sm text-slate-400">أهلاً بك يا <span id="userDisplayName" class="font-semibold text-indigo-300"></span>! نظم ميزانيتك بكل ذكاء (سحابياً).</p>
       </div>
 
       <!-- إدخال الميزانية + أزرار التحكم -->
@@ -277,13 +282,35 @@
     </section>
 
     <footer class="mt-10 text-center text-xs text-slate-600">
-      البيانات تُحفظ في متصفحك فقط (localStorage). مسح بيانات المتصفح سيؤدي لحذفها.
+      البيانات تتزامن سحابياً عبر قاعدة بيانات Firebase.
     </footer>
   </div>
 
 <script>
 (() => {
   'use strict';
+
+  // إعدادات Firebase الخاصة بمشروعك
+  const firebaseConfig = {
+    apiKey: "AIzaSyDjolZThgkj_6ph6YCci68kol5nrh8_AP8",
+    authDomain: "riyalpay-cd6a1.firebaseapp.com",
+    projectId: "riyalpay-cd6a1",
+    storageBucket: "riyalpay-cd6a1.firebasestorage.app",
+    messagingSenderId: "71448368028",
+    appId: "1:71448368028:web:507087976dfb25522aae59"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  const CATEGORY_META = {
+    'Food/Coffee': { ar: 'أكل / قهوة', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', icon: '🍔' },
+    'Study & Books': { ar: 'دراسة وكتب', color: 'bg-sky-500/10 text-sky-400 border border-sky-500/20', icon: '📚' },
+    'Transport': { ar: 'مواصلات', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20', icon: '🚌' },
+    'Entertainment': { ar: 'ترفيه', color: 'bg-purple-500/10 text-purple-400 border border-purple-500/20', icon: '🎮' },
+    'Bills': { ar: 'فواتير', color: 'bg-rose-500/10 text-rose-400 border border-rose-500/20', icon: '🧾' },
+    'Other': { ar: 'أخرى', color: 'bg-slate-500/10 text-slate-400 border border-slate-500/20', icon: '📦' }
+  };
 
   let isRegisterMode = false;
   let currentUser = '';
@@ -340,8 +367,9 @@
       els.loginScreen.classList.add('hidden');
       els.appContent.classList.remove('hidden');
       els.userDisplayName.textContent = currentUser;
-      loadUserData(currentUser);
-      render();
+      loadUserData(currentUser, () => {
+        render();
+      });
     }
   }
 
@@ -357,27 +385,33 @@
     e.preventDefault();
     const user = els.authUsername.value.trim();
     const pass = els.authPassword.value.trim();
-    const usersDB = JSON.parse(localStorage.getItem('riyalpay_users_db') || '{}');
 
-    if (isRegisterMode) {
-      if (usersDB[user]) {
-        els.authError.textContent = 'اسم المستخدم موجود مسبقاً، اختر اسمًا آخر.';
-        els.authError.classList.remove('hidden');
-        return;
+    db.collection("users").doc(user).get().then(doc => {
+      if (isRegisterMode) {
+        if (doc.exists) {
+          els.authError.textContent = 'اسم المستخدم موجود مسبقاً، اختر اسمًا آخر.';
+          els.authError.classList.remove('hidden');
+          return;
+        }
+        const initialData = { password: pass, budget: 990, expenses: [], goals: [], archives: [] };
+        db.collection("users").doc(user).set(initialData).then(() => {
+          localStorage.setItem('riyalpay_logged_user', user);
+          checkAuth();
+        });
+      } else {
+        if (!doc.exists || doc.data().password !== pass) {
+          els.authError.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
+          els.authError.classList.remove('hidden');
+          return;
+        }
+        localStorage.setItem('riyalpay_logged_user', user);
+        checkAuth();
       }
-      usersDB[user] = { password: pass };
-      localStorage.setItem('riyalpay_users_db', JSON.stringify(usersDB));
-      localStorage.setItem('riyalpay_logged_user', user);
-      checkAuth();
-    } else {
-      if (!usersDB[user] || usersDB[user].password !== pass) {
-        els.authError.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
-        els.authError.classList.remove('hidden');
-        return;
-      }
-      localStorage.setItem('riyalpay_logged_user', user);
-      checkAuth();
-    }
+    }).catch(err => {
+      console.error(err);
+      els.authError.textContent = 'حدث خطأ في الاتصال بقاعدة البيانات.';
+      els.authError.classList.remove('hidden');
+    });
   });
 
   els.logoutBtn.addEventListener('click', () => {
@@ -389,15 +423,16 @@
 
   function saveUserData() {
     if (!currentUser) return;
-    const data = { budget, expenses, goals, archives };
-    localStorage.setItem(`riyalpay_data_${currentUser}`, JSON.stringify(data));
+    db.collection("users").doc(currentUser).set({
+      password: localStorage.getItem('riyalpay_pass_' + currentUser) || '123456',
+      budget, expenses, goals, archives
+    }, { merge: true }).catch(err => console.error("خطأ بالحفظ السحابي:", err));
   }
 
-  function loadUserData(username) {
-    try {
-      const raw = localStorage.getItem(`riyalpay_data_${username}`);
-      if (raw) {
-        const data = JSON.parse(raw);
+  function loadUserData(username, callback) {
+    db.collection("users").doc(username).get().then((doc) => {
+      if (doc.exists) {
+        const data = doc.data();
         budget = Number.isFinite(data.budget) ? data.budget : 990;
         expenses = Array.isArray(data.expenses) ? data.expenses : [];
         goals = Array.isArray(data.goals) ? data.goals : [];
@@ -408,12 +443,11 @@
         goals = [];
         archives = [];
       }
-    } catch (e) {
-      budget = 990;
-      expenses = [];
-      goals = [];
-      archives = [];
-    }
+      if (callback) callback();
+    }).catch((error) => {
+      console.error("خطأ في جلب البيانات:", error);
+      if (callback) callback();
+    });
   }
 
   const fmt = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
@@ -616,7 +650,7 @@
 
     els.title.value = '';
     els.amount.value = '';
-    els.date.value = todayStr(); // إعادة ضبط التاريخ لتاريخ اليوم تلقائياً
+    els.date.value = todayStr();
     els.title.focus();
   }
 
@@ -739,7 +773,7 @@
   });
 
   checkAuth();
-  els.date.value = todayStr(); // ضبط خانة التاريخ تلقائياً بيوم اليوم عند تشغيل الصفحة
+  els.date.value = todayStr();
 })();
 </script>
 </body>
