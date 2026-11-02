@@ -162,27 +162,29 @@
       </div>
     </section>
 
-    <!-- قسم إدارة الديون (لك وعليك) -->
+    <!-- قسم إدارة الديون والأقساط المستمر -->
     <section class="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold flex items-center gap-2">
-          <span>🤝</span> إدارة الديون (فلوس لك ومبالغ عليك)
+          <span>🤝</span> إدارة الديون والأقساط
         </h2>
       </div>
 
-      <form id="debtForm" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-5">
-        <input id="debtPerson" type="text" required placeholder="اسم الشخص (مثل: أحمد)"
+      <form id="debtForm" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-6">
+        <input id="debtPerson" type="text" required placeholder="الجهة / الشخص (مثل: تمارا)"
           class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500 sm:col-span-2" />
-        <input id="debtAmount" type="number" min="0.01" step="0.01" required placeholder="المبلغ (ر.س)"
+        <input id="debtAmount" type="number" min="0.01" step="0.01" required placeholder="المبلغ الإجمالي (ر.س)"
           class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500" />
+        <input id="debtMonths" type="number" min="1" max="24" placeholder="عدد الأقساط (اختياري)"
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500" title="عدد الأقساط (اتركه فارغاً أو 1 لدين عادي)" />
         <select id="debtType"
           class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500">
+          <option value="on_me">فلوس علي (دين / قسط)</option>
           <option value="to_me">فلوس لي (دعيّة)</option>
-          <option value="on_me">فلوس علي (دينة)</option>
         </select>
         <button type="submit"
           class="rounded-xl bg-indigo-600 py-2.5 font-semibold text-white shadow-lg transition hover:bg-indigo-500 active:scale-[0.98]">
-          إضافة دين ➕
+          إضافة قسط ➕
         </button>
       </form>
 
@@ -221,16 +223,21 @@
       </div>
     </section>
 
-    <!-- سجل الأرشيف للشهور السابقة -->
+    <!-- سجل الأرشيف للشهور السابقة مع خيار الحذف -->
     <section class="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold flex items-center gap-2">
           <span>📂</span> أرشيف الشهور السابقة
         </h2>
-        <select id="archiveSelect"
-          class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
-          <option value="current">الشهر الحالي (نشط)</option>
-        </select>
+        <div class="flex items-center gap-2">
+          <select id="archiveSelect"
+            class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
+            <option value="current">الشهر الحالي (نشط)</option>
+          </select>
+          <button id="deleteArchiveBtn" type="button" class="hidden rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10" title="حذف الأرشيف المحدد">
+            🗑️ حذف الأرشيف
+          </button>
+        </div>
       </div>
       <div id="archiveDetails" class="text-sm text-slate-500 dark:text-slate-400">
         اختر شهراً من القائمة أعلاه لاستعراض ملخص ومصاريفه السابقة.
@@ -396,8 +403,9 @@
     goalForm: $('goalForm'), goalTitle: $('goalTitle'), goalTarget: $('goalTarget'),
     goalsContainer: $('goalsContainer'),
     debtForm: $('debtForm'), debtPerson: $('debtPerson'), debtAmount: $('debtAmount'),
-    debtType: $('debtType'), debtsContainer: $('debtsContainer'),
-    newMonthBtn: $('newMonthBtn'), archiveSelect: $('archiveSelect'), archiveDetails: $('archiveDetails')
+    debtMonths: $('debtMonths'), debtType: $('debtType'), debtsContainer: $('debtsContainer'),
+    newMonthBtn: $('newMonthBtn'), archiveSelect: $('archiveSelect'), archiveDetails: $('archiveDetails'),
+    deleteArchiveBtn: $('deleteArchiveBtn')
   };
 
   const initTheme = () => {
@@ -538,12 +546,13 @@
       html += `<option value="${idx}">${escapeHTML(arch.monthName)} (ميزانية: ${fmt(arch.budget)})</option>`;
     });
     els.archiveSelect.innerHTML = html;
+    els.deleteArchiveBtn.classList.toggle('hidden', els.archiveSelect.value === 'current');
   }
 
   function renderSummary() {
     const spent = expenses.reduce((sum, e) => sum + e.amount, 0);
-    const totalToMe = debts.filter(d => d.type === 'to_me' && !d.paid).reduce((s, d) => s + d.amount, 0);
-    const totalOnMe = debts.filter(d => d.type === 'on_me' && !d.paid).reduce((s, d) => s + d.amount, 0);
+    const totalToMe = debts.filter(d => d.type === 'to_me' && (!d.months || (d.paidMonths || 0) < d.months)).reduce((s, d) => s + (d.months && d.months > 1 ? (d.amount / d.months) * (d.months - (d.paidMonths || 0)) : d.amount), 0);
+    const totalOnMe = debts.filter(d => d.type === 'on_me' && (!d.months || (d.paidMonths || 0) < d.months)).reduce((s, d) => s + (d.months && d.months > 1 ? (d.amount / d.months) * (d.months - (d.paidMonths || 0)) : d.amount), 0);
     const netDebts = totalToMe - totalOnMe;
     const remaining = budget - spent;
 
@@ -612,32 +621,54 @@
 
   function renderDebts() {
     if (debts.length === 0) {
-      els.debtsContainer.innerHTML = '<p class="text-sm text-slate-500 col-span-full text-center py-6">ما فيه ديون مسجلة. ممتاز!</p>';
+      els.debtsContainer.innerHTML = '<p class="text-sm text-slate-500 col-span-full text-center py-6">ما فيه ديون أو أقساط مسجلة.</p>';
       return;
     }
     els.debtsContainer.innerHTML = debts.map(d => {
       const isToMe = d.type === 'to_me';
+      const months = parseInt(d.months) || 1;
+      const paidMonths = d.paidMonths || 0;
+      const isInstallment = months > 1;
+      const monthlyInstallment = isInstallment ? (d.amount / months) : d.amount;
+      const isFullyPaid = paidMonths >= (isInstallment ? months : 1);
+
       return `
-        <div class="relative overflow-hidden rounded-2xl border ${d.paid ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 opacity-60' : (isToMe ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/20' : 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/20')} p-4 transition-all">
+        <div class="relative overflow-hidden rounded-2xl border ${isFullyPaid ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 opacity-60' : (isToMe ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/20' : 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/20')} p-4 transition-all">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <span class="text-lg">${isToMe ? '🟢' : '🔴'}</span>
-              <span class="font-semibold text-slate-900 dark:text-slate-100 ${d.paid ? 'line-through' : ''}">${escapeHTML(d.person)}</span>
+              <span class="font-semibold text-slate-900 dark:text-slate-100 ${isFullyPaid ? 'line-through' : ''}">${escapeHTML(d.person)}</span>
               <span class="rounded-full px-2 py-0.5 text-xs font-medium ${isToMe ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-rose-500/20 text-rose-700 dark:text-rose-300'}">
-                ${isToMe ? 'فلوس لك' : 'فلوس عليك'}
+                ${isToMe ? 'فلوس لك' : (isInstallment ? `${months} أقساط` : 'دين كامل')}
               </span>
-              ${d.paid ? '<span class="rounded-full bg-slate-200 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">مسدد</span>' : ''}
+              ${isInstallment ? `
+                <span class="rounded-full bg-slate-200 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">
+                  تم سداد ${paidMonths} من ${months}
+                </span>
+              ` : ''}
+              ${isFullyPaid ? '<span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs text-emerald-600">مسدد بالكامل 🎉</span>' : ''}
             </div>
             <div class="flex items-center gap-1">
-              <button data-action="toggle_debt" data-id="${d.id}" class="rounded-lg p-1 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition" title="تغيير حالة السداد">
-                ${d.paid ? '↩️ إرجاع' : '✔️ تسديد'}
-              </button>
+              ${!isFullyPaid ? `
+                <button data-action="pay_installment" data-id="${d.id}" class="rounded-lg px-2 py-1 text-xs bg-indigo-600 text-white hover:bg-indigo-500 transition font-semibold" title="${isInstallment ? 'تسديد قسط هذا الشهر' : 'تسديد الدين بالكامل'}">
+                  ${isInstallment ? 'تسديد قسط 💳' : 'تسديد الدين ✔️'}
+                </button>
+                ${paidMonths > 0 ? `
+                  <button data-action="undo_installment" data-id="${d.id}" class="rounded-lg p-1 text-xs text-amber-500 hover:bg-amber-500/10 transition" title="إلغاء آخر قسط">
+                    ↩️ إلغاء
+                  </button>
+                ` : ''}
+              ` : `
+                <button data-action="undo_installment" data-id="${d.id}" class="rounded-lg p-1 text-xs text-amber-500 hover:bg-amber-500/10 transition" title="إرجاع حالة الدين">
+                  ↩️ إرجاع
+                </button>
+              `}
               <button data-action="delete_debt" data-id="${d.id}" class="rounded-lg p-1 text-xs text-red-500 hover:bg-red-500/10 transition" title="حذف">🗑️</button>
             </div>
           </div>
           <div class="flex justify-between items-center text-sm">
-            <span class="text-slate-500 dark:text-slate-400">المبلغ:</span>
-            <strong class="${isToMe ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} text-base">${fmt(d.amount)}</strong>
+            <span class="text-slate-500 dark:text-slate-400">الإجمالي: <strong class="text-slate-800 dark:text-slate-200">${fmt(d.amount)}</strong></span>
+            <span class="text-xs text-slate-400">${isInstallment ? 'قسط الشهر:' : 'المبلغ:'} <strong class="${isToMe ? 'text-emerald-600 dark:text-emerald-400' : 'text-orange-600 dark:text-orange-400'} text-sm">${fmt(monthlyInstallment)}</strong></span>
           </div>
         </div>
       `;
@@ -766,7 +797,7 @@
 
   function startNewMonth() {
     const monthName = `شهر ${new Date().toLocaleString('ar-SA', { month: 'long', year: 'numeric' })} (${archives.length + 1})`;
-    if (confirm(`هل تريد أرشفة الشهر الحالي وبدء شهر جديد؟`)) {
+    if (confirm(`هل تريد أرشفة الشهر الحالي وبدء شهر جديد؟ (الديون والأقساط والأهداف ستستمر معك)`)) {
       archives.push({
         monthName: monthName,
         budget: budget,
@@ -775,10 +806,9 @@
         date: new Date().toLocaleDateString('ar-SA')
       });
       expenses = [];
-      debts = [];
       saveUserData();
       render();
-      alert('تم بدء الشهر الجديد وأرشفة البيانات السابقة بنجاح!');
+      alert('تم بدء الشهر الجديد وأرشفة البيانات بنجاح! الديون والأقساط باقية معك.');
     }
   }
 
@@ -829,10 +859,14 @@
     e.preventDefault();
     const person = els.debtPerson.value.trim();
     const amount = parseFloat(els.debtAmount.value);
+    const monthsInput = parseInt(els.debtMonths.value);
+    const months = (!Number.isFinite(monthsInput) || monthsInput < 1) ? 1 : monthsInput;
+
     if (!person || !Number.isFinite(amount) || amount <= 0) return;
-    debts.push({ id: uid(), person, amount: Math.round(amount * 100) / 100, type: els.debtType.value, paid: false });
+    debts.push({ id: uid(), person, amount: Math.round(amount * 100) / 100, months: months, paidMonths: 0, type: els.debtType.value });
     els.debtPerson.value = '';
     els.debtAmount.value = '';
+    els.debtMonths.value = '';
     saveUserData();
     render();
   }
@@ -851,6 +885,7 @@
 
   els.archiveSelect.addEventListener('change', e => {
     const val = e.target.value;
+    els.deleteArchiveBtn.classList.toggle('hidden', val === 'current');
     if (val === 'current') {
       els.archiveDetails.innerHTML = 'اختر شهراً من القائمة أعلاه لاستعراض ملخص ومصاريفه السابقة.';
       render();
@@ -878,6 +913,17 @@
     `;
   });
 
+  els.deleteArchiveBtn.addEventListener('click', () => {
+    const val = els.archiveSelect.value;
+    if (val === 'current') return;
+    if (confirm('هل أنت متأكد من حذف هذا الأرشيف النهائي؟')) {
+      archives.splice(parseInt(val), 1);
+      saveUserData();
+      render();
+      els.archiveDetails.innerHTML = 'اختر شهراً من القائمة أعلاه لاستعراض ملخص ومصاريفه السابقة.';
+    }
+  });
+
   els.budgetForm.addEventListener('submit', setBudget);
   els.newMonthBtn.addEventListener('click', startNewMonth);
   els.expenseForm.addEventListener('submit', addExpense);
@@ -899,25 +945,40 @@
     const btn = ev.target.closest('[data-action]');
     if (!btn) return;
     const id = btn.dataset.id;
-    if (btn.dataset.action === 'delete_debt') {
+    const action = btn.dataset.action;
+
+    if (action === 'delete_debt') {
       debts = debts.filter(d => d.id !== id);
-    } else if (btn.dataset.action === 'toggle_debt') {
+      expenses = expenses.filter(ex => ex.debtId !== id);
+    } else if (action === 'pay_installment') {
       const d = debts.find(x => x.id === id);
       if (d) {
-        d.paid = !d.paid;
-        if (d.type === 'on_me') {
-          if (d.paid) {
+        const months = parseInt(d.months) || 1;
+        if (!d.paidMonths) d.paidMonths = 0;
+        if (d.paidMonths < months) {
+          d.paidMonths++;
+          const installmentVal = months > 1 ? (d.amount / months) : d.amount;
+          if (d.type === 'on_me') {
             expenses.push({
-              id: 'debt_exp_' + d.id,
-              title: `تسديد دين لصالح: ${d.person}`,
-              amount: d.amount,
+              id: 'debt_inst_' + uid(),
+              title: months > 1 ? `قسط (${d.person}) - ${d.paidMonths}/${months}` : `سداد دين (${d.person})`,
+              amount: installmentVal,
               category: 'Bills',
               date: todayStr(),
               isDebtExpense: true,
               debtId: d.id
             });
-          } else {
-            expenses = expenses.filter(ex => ex.debtId !== d.id);
+          }
+        }
+      }
+    } else if (action === 'undo_installment') {
+      const d = debts.find(x => x.id === id);
+      if (d && d.paidMonths > 0) {
+        d.paidMonths--;
+        if (d.type === 'on_me') {
+          const lastExpIdx = expenses.map(ex => ex.debtId).lastIndexOf(d.id);
+          if (lastExpIdx !== -1) {
+            expenses.splice(lastExpIdx, 1);
           }
         }
       }
