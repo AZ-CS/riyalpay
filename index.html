@@ -10,8 +10,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
+  <!-- مكتبة الرسم البياني Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <script>
     tailwind.config = {
+      darkMode: 'class',
       theme: {
         extend: {
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
@@ -32,15 +36,15 @@
     input[type="number"]::-webkit-inner-spin-button,
     input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     input[type="number"] { -moz-appearance: textfield; }
-    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+    input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
   </style>
 </head>
 
-<body class="min-h-screen bg-slate-950 text-slate-100 antialiased flex flex-col justify-between">
+<body class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 antialiased flex flex-col justify-between transition-colors duration-300">
 
   <!-- شاشة تسجيل الدخول / إنشاء الحساب -->
   <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md px-4 hidden">
-    <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+    <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl text-slate-100">
       <div class="text-center mb-6">
         <div class="text-4xl mb-2">💳</div>
         <h2 id="authTitle" class="text-2xl font-bold tracking-tight">تسجيل الدخول إلى ريال باي</h2>
@@ -51,12 +55,12 @@
         <div>
           <label class="block text-xs font-medium text-slate-400 mb-1">اسم المستخدم</label>
           <input id="authUsername" type="text" required placeholder="مثال: عبدالعزيز"
-            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none transition focus:border-indigo-500" />
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-400 mb-1">كلمة المرور</label>
           <input id="authPassword" type="password" required placeholder="••••••••"
-            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none transition focus:border-indigo-500" />
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-indigo-500" />
         </div>
         <p id="authError" class="hidden text-xs text-red-400 text-center"></p>
 
@@ -81,53 +85,68 @@
     <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">
-          💳 ريال <span class="text-indigo-400">باي</span>
+          💳 ريال <span class="text-indigo-500 dark:text-indigo-400">باي</span>
         </h1>
-        <p class="mt-1 text-sm text-slate-400">أهلاً بك يا <span id="userDisplayName" class="font-semibold text-indigo-300"></span>! نظم ميزانيتك بكل ذكاء (سحابياً).</p>
+        <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">أهلاً بك يا <span id="userDisplayName" class="font-semibold text-indigo-600 dark:text-indigo-300"></span>! نظم ميزانيتك وديونك بكل ذكاء.</p>
       </div>
 
       <!-- إدخال الميزانية + أزرار التحكم -->
       <div class="flex flex-wrap items-end gap-2">
         <form id="budgetForm" class="flex items-end gap-2">
           <div class="w-40 sm:w-48">
-            <label for="budgetInput" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
+            <label for="budgetInput" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-600 dark:text-slate-400">
               الميزانية الحالية (ر.س)
             </label>
             <input id="budgetInput" type="number" min="0" step="0.01" placeholder="مثال: 990"
-              class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 placeholder-slate-500 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+              class="w-full rounded-xl border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900 px-4 py-2.5 text-slate-900 dark:text-slate-100 placeholder-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
           </div>
           <button type="submit"
             class="rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-95">
             حفظ
           </button>
         </form>
+
+        <!-- زر تبديل الوضع (Dark / Light) -->
+        <button id="themeToggleBtn" type="button"
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 font-semibold text-slate-700 dark:text-slate-300 transition hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95" title="تغيير المظهر">
+          🌙
+        </button>
+
         <button id="newMonthBtn" type="button"
-          class="rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-2.5 font-semibold text-emerald-300 transition hover:bg-emerald-600/20 active:scale-95" title="أرشفة الشهر الحالي وبدء شهر جديد">
+          class="rounded-xl border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5 font-semibold text-emerald-600 dark:text-emerald-300 transition hover:bg-emerald-100 dark:hover:bg-emerald-600/20 active:scale-95" title="أرشفة الشهر الحالي وبدء شهر جديد">
           🔄 شهر جديد
         </button>
         <button id="logoutBtn" type="button"
-          class="rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 font-semibold text-red-300 transition hover:bg-red-600/20 active:scale-95" title="تسجيل خروج">
+          class="rounded-xl border border-red-500/40 bg-red-50 dark:bg-red-950/30 px-3 py-2.5 font-semibold text-red-600 dark:text-red-300 transition hover:bg-red-100 dark:hover:bg-red-600/20 active:scale-95" title="تسجيل خروج">
           🚪 خروج
         </button>
       </div>
     </header>
 
     <!-- بطاقات الملخص -->
-    <section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+    <section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-4">
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-medium text-slate-400">إجمالي الميزانية</p>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">إجمالي الميزانية</p>
           <span class="text-xl">🏦</span>
         </div>
-        <p id="totalBudget" class="mt-3 text-3xl font-bold text-sky-400">0.00</p>
+        <p id="totalBudget" class="mt-3 text-3xl font-bold text-sky-600 dark:text-sky-400">0.00</p>
       </div>
 
-      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
         <div class="flex items-center justify-between">
-          <p class="text-sm font-medium text-slate-400">إجمالي المصاريف</p>
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">إجمالي المصاريف</p>
           <span class="text-xl">🔥</span>
         </div>
-        <p id="totalSpent" class="mt-3 text-3xl font-bold text-orange-400">0.00</p>
+        <p id="totalSpent" class="mt-3 text-3xl font-bold text-orange-600 dark:text-orange-400">0.00</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">صافي الديون (لي / علي)</p>
+          <span class="text-xl">🤝</span>
+        </div>
+        <p id="netDebtsSummary" class="mt-3 text-3xl font-bold text-indigo-600 dark:text-indigo-400">0.00</p>
       </div>
 
       <div id="balanceCard" class="card-transition rounded-2xl border p-5 shadow-lg">
@@ -137,14 +156,41 @@
         </div>
         <p id="remainingBalance" class="mt-3 text-3xl font-bold">0.00</p>
         <p id="balanceStatus" class="mt-1 text-xs font-medium opacity-80"></p>
-        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/30">
+        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-black/30">
           <div id="progressBar" class="h-full rounded-full transition-all duration-500" style="width:0%"></div>
         </div>
       </div>
     </section>
 
+    <!-- قسم إدارة الديون (لك وعليك) -->
+    <section class="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <span>🤝</span> إدارة الديون (فلوس لك ومبالغ عليك)
+        </h2>
+      </div>
+
+      <form id="debtForm" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-5">
+        <input id="debtPerson" type="text" required placeholder="اسم الشخص (مثل: أحمد)"
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500 sm:col-span-2" />
+        <input id="debtAmount" type="number" min="0.01" step="0.01" required placeholder="المبلغ (ر.س)"
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500" />
+        <select id="debtType"
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm outline-none transition focus:border-indigo-500">
+          <option value="to_me">فلوس لي (دعيّة)</option>
+          <option value="on_me">فلوس علي (دينة)</option>
+        </select>
+        <button type="submit"
+          class="rounded-xl bg-indigo-600 py-2.5 font-semibold text-white shadow-lg transition hover:bg-indigo-500 active:scale-[0.98]">
+          إضافة دين ➕
+        </button>
+      </form>
+
+      <div id="debtsContainer" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+    </section>
+
     <!-- قسم أهداف التوفير المستمرة -->
-    <section class="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+    <section class="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold flex items-center gap-2">
           <span>🎯</span> أهداف التوفير المستمرة
@@ -153,9 +199,9 @@
 
       <form id="goalForm" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <input id="goalTitle" type="text" required placeholder="اسم الهدف (مثل: كرت شاشة جديد)"
-          class="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-600 outline-none transition focus:border-indigo-500" />
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500" />
         <input id="goalTarget" type="number" min="1" step="0.01" required placeholder="المبلغ المستهدف (ر.س)"
-          class="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-600 outline-none transition focus:border-indigo-500" />
+          class="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-400 outline-none transition focus:border-indigo-500" />
         <button type="submit"
           class="rounded-xl bg-emerald-600 py-2.5 font-semibold text-white shadow-lg transition hover:bg-emerald-500 active:scale-[0.98]">
           إضافة هدف جديد
@@ -165,18 +211,28 @@
       <div id="goalsContainer" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
     </section>
 
+    <!-- قسم الرسم البياني للتحليل المالي -->
+    <section class="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
+      <h2 class="mb-4 text-lg font-semibold flex items-center gap-2">
+        <span>📊</span> تحليل وتوزيع المصاريف حسب التصنيفات
+      </h2>
+      <div class="max-w-md mx-auto h-64 sm:h-72 flex items-center justify-center">
+        <canvas id="expenseChart"></canvas>
+      </div>
+    </section>
+
     <!-- سجل الأرشيف للشهور السابقة -->
-    <section class="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+    <section class="mb-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 class="text-lg font-semibold flex items-center gap-2">
           <span>📂</span> أرشيف الشهور السابقة
         </h2>
         <select id="archiveSelect"
-          class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
+          class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
           <option value="current">الشهر الحالي (نشط)</option>
         </select>
       </div>
-      <div id="archiveDetails" class="text-sm text-slate-400">
+      <div id="archiveDetails" class="text-sm text-slate-500 dark:text-slate-400">
         اختر شهراً من القائمة أعلاه لاستعراض ملخص ومصاريفه السابقة.
       </div>
     </section>
@@ -185,26 +241,26 @@
     <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
       <div class="lg:col-span-1">
-        <form id="expenseForm" class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg lg:sticky lg:top-6">
+        <form id="expenseForm" class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg lg:sticky lg:top-6">
           <h2 class="mb-4 text-lg font-semibold">➕ إضافة مصروف</h2>
 
           <div class="space-y-4">
             <div>
-              <label for="title" class="mb-1 block text-sm text-slate-400">الاسم / الوصف</label>
+              <label for="title" class="mb-1 block text-sm text-slate-600 dark:text-slate-400">الاسم / الوصف</label>
               <input id="title" type="text" maxlength="60" required placeholder="مثال: قهوة، كتاب جامعي..."
-                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 placeholder-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 placeholder-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
             </div>
 
             <div>
-              <label for="amount" class="mb-1 block text-sm text-slate-400">المبلغ (ر.س)</label>
+              <label for="amount" class="mb-1 block text-sm text-slate-600 dark:text-slate-400">المبلغ (ر.س)</label>
               <input id="amount" type="number" min="0.01" step="0.01" required placeholder="0.00"
-                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 placeholder-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 placeholder-slate-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
             </div>
 
             <div>
-              <label for="category" class="mb-1 block text-sm text-slate-400">التصنيف</label>
+              <label for="category" class="mb-1 block text-sm text-slate-600 dark:text-slate-400">التصنيف</label>
               <select id="category"
-                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
                 <option value="Food/Coffee">🍔 أكل / قهوة</option>
                 <option value="Study & Books">📚 دراسة وكتب</option>
                 <option value="Transport">🚌 مواصلات</option>
@@ -215,9 +271,9 @@
             </div>
 
             <div>
-              <label for="date" class="mb-1 block text-sm text-slate-400">التاريخ (تلقائي بيوم اليوم)</label>
+              <label for="date" class="mb-1 block text-sm text-slate-600 dark:text-slate-400">التاريخ (تلقائي بيوم اليوم)</label>
               <input id="date" type="date" required
-                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
             </div>
 
             <p id="formError" class="hidden text-sm text-red-400"></p>
@@ -231,14 +287,14 @@
       </div>
 
       <div class="lg:col-span-2">
-        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-lg">
           <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 class="text-lg font-semibold">🧾 العمليات
-              <span id="countBadge" class="mr-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">0</span>
+              <span id="countBadge" class="mr-2 rounded-full bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">0</span>
             </h2>
             <div class="flex items-center gap-2">
               <select id="filterCategory"
-                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
+                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
                 <option value="all">جميع التصنيفات</option>
                 <option value="Food/Coffee">أكل / قهوة</option>
                 <option value="Study & Books">دراسة وكتب</option>
@@ -248,7 +304,7 @@
                 <option value="Other">أخرى</option>
               </select>
               <button id="clearAll" type="button"
-                class="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-400 transition hover:bg-red-500/10">
+                class="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-600 dark:text-red-400 transition hover:bg-red-50 dark:hover:bg-red-500/10">
                 حذف الكل
               </button>
             </div>
@@ -256,13 +312,13 @@
 
           <div id="emptyState" class="hidden py-12 text-center">
             <p class="text-5xl">🪙</p>
-            <p class="mt-3 text-slate-400">ما فيه مصاريف مسجلة. ممتاز.. أو إنك لسا ما بديت تسجل.</p>
+            <p class="mt-3 text-slate-500 dark:text-slate-400">ما فيه مصاريف مسجلة. ممتاز.. أو إنك لسا ما بديت تسجل.</p>
           </div>
 
           <!-- جدول سطح المكتب -->
           <div id="tableWrap" class="overflow-x-auto">
             <table class="w-full text-right text-sm">
-              <thead class="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
+              <thead class="border-b border-slate-200 dark:border-slate-800 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th class="py-3 pl-3">الاسم</th>
                   <th class="py-3 pl-3">التصنيف</th>
@@ -271,7 +327,7 @@
                   <th class="py-3 text-left"></th>
                 </tr>
               </thead>
-              <tbody id="expenseTable" class="divide-y divide-slate-800"></tbody>
+              <tbody id="expenseTable" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
             </table>
           </div>
 
@@ -281,7 +337,7 @@
       </div>
     </section>
 
-    <footer class="mt-10 text-center text-xs text-slate-600">
+    <footer class="mt-10 text-center text-xs text-slate-500 dark:text-slate-600">
       البيانات تتزامن سحابياً عبر قاعدة بيانات Firebase.
     </footer>
   </div>
@@ -290,7 +346,6 @@
 (() => {
   'use strict';
 
-  // إعدادات Firebase الخاصة بمشروعك
   const firebaseConfig = {
     apiKey: "AIzaSyDjolZThgkj_6ph6YCci68kol5nrh8_AP8",
     authDomain: "riyalpay-cd6a1.firebaseapp.com",
@@ -304,12 +359,12 @@
   const db = firebase.firestore();
 
   const CATEGORY_META = {
-    'Food/Coffee': { ar: 'أكل / قهوة', color: 'bg-amber-500/10 text-amber-400 border border-amber-500/20', icon: '🍔' },
-    'Study & Books': { ar: 'دراسة وكتب', color: 'bg-sky-500/10 text-sky-400 border border-sky-500/20', icon: '📚' },
-    'Transport': { ar: 'مواصلات', color: 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20', icon: '🚌' },
-    'Entertainment': { ar: 'ترفيه', color: 'bg-purple-500/10 text-purple-400 border border-purple-500/20', icon: '🎮' },
-    'Bills': { ar: 'فواتير', color: 'bg-rose-500/10 text-rose-400 border border-rose-500/20', icon: '🧾' },
-    'Other': { ar: 'أخرى', color: 'bg-slate-500/10 text-slate-400 border border-slate-500/20', icon: '📦' }
+    'Food/Coffee': { ar: 'أكل / قهوة', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20', icon: '🍔' },
+    'Study & Books': { ar: 'دراسة وكتب', color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20', icon: '📚' },
+    'Transport': { ar: 'مواصلات', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20', icon: '🚌' },
+    'Entertainment': { ar: 'ترفيه', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20', icon: '🎮' },
+    'Bills': { ar: 'فواتير', color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20', icon: '🧾' },
+    'Other': { ar: 'أخرى', color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20', icon: '📦' }
   };
 
   let isRegisterMode = false;
@@ -317,7 +372,9 @@
   let budget = 0;
   let expenses = [];
   let goals = [];
+  let debts = [];
   let archives = [];
+  let expenseChartInstance = null;
 
   const $ = id => document.getElementById(id);
   const els = {
@@ -327,18 +384,39 @@
     appContent: $('appContent'), userDisplayName: $('userDisplayName'), logoutBtn: $('logoutBtn'),
     budgetForm: $('budgetForm'), budgetInput: $('budgetInput'),
     totalBudget: $('totalBudget'), totalSpent: $('totalSpent'),
+    netDebtsSummary: $('netDebtsSummary'),
     remaining: $('remainingBalance'), balanceCard: $('balanceCard'),
     balanceIcon: $('balanceIcon'), balanceStatus: $('balanceStatus'),
-    progressBar: $('progressBar'),
+    progressBar: $('progressBar'), themeToggleBtn: $('themeToggleBtn'),
     expenseForm: $('expenseForm'), title: $('title'), amount: $('amount'),
     category: $('category'), date: $('date'), formError: $('formError'),
     table: $('expenseTable'), cards: $('expenseCards'),
     tableWrap: $('tableWrap'), emptyState: $('emptyState'),
     countBadge: $('countBadge'), filter: $('filterCategory'), clearAll: $('clearAll'),
     goalForm: $('goalForm'), goalTitle: $('goalTitle'), goalTarget: $('goalTarget'),
-    goalsContainer: $('goalsContainer'), newMonthBtn: $('newMonthBtn'),
-    archiveSelect: $('archiveSelect'), archiveDetails: $('archiveDetails')
+    goalsContainer: $('goalsContainer'),
+    debtForm: $('debtForm'), debtPerson: $('debtPerson'), debtAmount: $('debtAmount'),
+    debtType: $('debtType'), debtsContainer: $('debtsContainer'),
+    newMonthBtn: $('newMonthBtn'), archiveSelect: $('archiveSelect'), archiveDetails: $('archiveDetails')
   };
+
+  const initTheme = () => {
+    const savedTheme = localStorage.getItem('riyalpay_theme') || 'dark';
+    if (savedTheme === 'light') {
+      document.documentElement.classList.remove('dark');
+      els.themeToggleBtn.textContent = '☀️';
+    } else {
+      document.documentElement.classList.add('dark');
+      els.themeToggleBtn.textContent = '🌙';
+    }
+  };
+
+  els.themeToggleBtn.addEventListener('click', () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('riyalpay_theme', isDark ? 'dark' : 'light');
+    els.themeToggleBtn.textContent = isDark ? '🌙' : '☀️';
+    renderChart();
+  });
 
   const todayStr = () => {
     const d = new Date();
@@ -393,7 +471,7 @@
           els.authError.classList.remove('hidden');
           return;
         }
-        const initialData = { password: pass, budget: 990, expenses: [], goals: [], archives: [] };
+        const initialData = { password: pass, budget: 990, expenses: [], goals: [], debts: [], archives: [] };
         db.collection("users").doc(user).set(initialData).then(() => {
           localStorage.setItem('riyalpay_logged_user', user);
           checkAuth();
@@ -425,7 +503,7 @@
     if (!currentUser) return;
     db.collection("users").doc(currentUser).set({
       password: localStorage.getItem('riyalpay_pass_' + currentUser) || '123456',
-      budget, expenses, goals, archives
+      budget, expenses, goals, debts, archives
     }, { merge: true }).catch(err => console.error("خطأ بالحفظ السحابي:", err));
   }
 
@@ -436,11 +514,13 @@
         budget = Number.isFinite(data.budget) ? data.budget : 990;
         expenses = Array.isArray(data.expenses) ? data.expenses : [];
         goals = Array.isArray(data.goals) ? data.goals : [];
+        debts = Array.isArray(data.debts) ? data.debts : [];
         archives = Array.isArray(data.archives) ? data.archives : [];
       } else {
         budget = 990;
         expenses = [];
         goals = [];
+        debts = [];
         archives = [];
       }
       if (callback) callback();
@@ -462,25 +542,29 @@
 
   function renderSummary() {
     const spent = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalToMe = debts.filter(d => d.type === 'to_me' && !d.paid).reduce((s, d) => s + d.amount, 0);
+    const totalOnMe = debts.filter(d => d.type === 'on_me' && !d.paid).reduce((s, d) => s + d.amount, 0);
+    const netDebts = totalToMe - totalOnMe;
     const remaining = budget - spent;
 
     els.totalBudget.textContent = fmt(budget);
     els.totalSpent.textContent = fmt(spent);
+    els.netDebtsSummary.textContent = (netDebts >= 0 ? '+' : '') + fmt(netDebts);
     els.remaining.textContent = fmt(remaining);
 
     const ratio = budget > 0 ? remaining / budget : (remaining < 0 ? -1 : 0);
-
     let state;
+
     if (budget === 0 && spent === 0) {
-      state = { card: 'border-slate-700 bg-slate-900 text-slate-100', bar: 'bg-slate-500', icon: '🎯', msg: 'حدد ميزانيتك عشان تبدأ' };
+      state = { card: 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100', bar: 'bg-slate-500', icon: '🎯', msg: 'حدد ميزانيتك عشان تبدأ' };
     } else if (remaining < 0) {
-      state = { card: 'border-red-500/60 bg-red-950/60 text-red-200 shadow-[0_0_35px_rgba(239,68,68,0.45)]', bar: 'bg-red-500', icon: '🚨', msg: `متعدي الميزانية بـ ${fmt(Math.abs(remaining))}!` };
+      state = { card: 'border-red-500/60 bg-red-50 dark:bg-red-950/60 text-red-900 dark:text-red-200 shadow-lg', bar: 'bg-red-500', icon: '🚨', msg: `متعدي الميزانية بـ ${fmt(Math.abs(remaining))}!` };
     } else if (ratio <= 0.10) {
-      state = { card: 'border-red-500/60 bg-red-950/50 text-red-200 shadow-[0_0_30px_rgba(239,68,68,0.35)]', bar: 'bg-red-500', icon: '⚠️', msg: 'الطفارا تقرع أجراس الخطر! خفف صرف.' };
+      state = { card: 'border-red-500/60 bg-red-50 dark:bg-red-950/50 text-red-900 dark:text-red-200 shadow-lg', bar: 'bg-red-500', icon: '⚠️', msg: 'الطفارا تقرع أجراس الخطر!' };
     } else if (ratio <= 0.30) {
-      state = { card: 'border-yellow-500/60 bg-yellow-950/40 text-yellow-200 shadow-[0_0_30px_rgba(234,179,8,0.30)]', bar: 'bg-yellow-400', icon: '😬', msg: 'الميزانية تقل، انتبه لخطواتك.' };
+      state = { card: 'border-yellow-500/60 bg-yellow-50 dark:bg-yellow-950/40 text-yellow-900 dark:text-yellow-200 shadow-lg', bar: 'bg-yellow-400', icon: '😬', msg: 'الميزانية تقل، انتبه لخطواتك.' };
     } else {
-      state = { card: 'border-emerald-500/60 bg-emerald-950/40 text-emerald-200 shadow-[0_0_30px_rgba(16,185,129,0.30)]', bar: 'bg-emerald-400', icon: '✅', msg: 'أنت في السيف زون (منطقة الأمان).' };
+      state = { card: 'border-emerald-500/60 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-lg', bar: 'bg-emerald-400', icon: '✅', msg: 'أنت في السيف زون (منطقة الأمان).' };
     }
 
     els.balanceCard.className = `card-transition rounded-2xl border p-5 shadow-lg ${state.card}`;
@@ -492,50 +576,120 @@
     els.progressBar.style.width = pct + '%';
   }
 
+  function renderChart() {
+    const ctx = document.getElementById('expenseChart').getContext('2d');
+    const totals = { 'Food/Coffee': 0, 'Study & Books': 0, 'Transport': 0, 'Entertainment': 0, 'Bills': 0, 'Other': 0 };
+    expenses.forEach(e => { if (totals[e.category] !== undefined) totals[e.category] += e.amount; });
+    const dataValues = [totals['Food/Coffee'], totals['Study & Books'], totals['Transport'], totals['Entertainment'], totals['Bills'], totals['Other']];
+    const isDark = document.documentElement.classList.contains('dark');
+
+    if (expenseChartInstance) {
+      expenseChartInstance.data.datasets[0].data = dataValues;
+      expenseChartInstance.data.datasets[0].borderColor = isDark ? '#0f172a' : '#ffffff';
+      expenseChartInstance.options.plugins.legend.labels.color = isDark ? '#cbd5e1' : '#334155';
+      expenseChartInstance.update();
+      return;
+    }
+
+    expenseChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['أكل / قهوة', 'دراسة وكتب', 'مواصلات', 'ترفيه', 'فواتير', 'أخرى'],
+        datasets: [{
+          data: dataValues,
+          backgroundColor: ['#f59e0b', '#0ea5e9', '#10b981', '#a855f7', '#f43f5e', '#64748b'],
+          borderWidth: 2,
+          borderColor: isDark ? '#0f172a' : '#ffffff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom', labels: { color: isDark ? '#cbd5e1' : '#334155', font: { family: 'Inter', size: 11 } } } }
+      }
+    });
+  }
+
+  function renderDebts() {
+    if (debts.length === 0) {
+      els.debtsContainer.innerHTML = '<p class="text-sm text-slate-500 col-span-full text-center py-6">ما فيه ديون مسجلة. ممتاز!</p>';
+      return;
+    }
+    els.debtsContainer.innerHTML = debts.map(d => {
+      const isToMe = d.type === 'to_me';
+      return `
+        <div class="relative overflow-hidden rounded-2xl border ${d.paid ? 'border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-950/40 opacity-60' : (isToMe ? 'border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/20' : 'border-rose-500/40 bg-rose-50 dark:bg-rose-950/20')} p-4 transition-all">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">${isToMe ? '🟢' : '🔴'}</span>
+              <span class="font-semibold text-slate-900 dark:text-slate-100 ${d.paid ? 'line-through' : ''}">${escapeHTML(d.person)}</span>
+              <span class="rounded-full px-2 py-0.5 text-xs font-medium ${isToMe ? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' : 'bg-rose-500/20 text-rose-700 dark:text-rose-300'}">
+                ${isToMe ? 'فلوس لك' : 'فلوس عليك'}
+              </span>
+              ${d.paid ? '<span class="rounded-full bg-slate-200 dark:bg-slate-800 px-2 py-0.5 text-xs text-slate-600 dark:text-slate-400">مسدد</span>' : ''}
+            </div>
+            <div class="flex items-center gap-1">
+              <button data-action="toggle_debt" data-id="${d.id}" class="rounded-lg p-1 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition" title="تغيير حالة السداد">
+                ${d.paid ? '↩️ إرجاع' : '✔️ تسديد'}
+              </button>
+              <button data-action="delete_debt" data-id="${d.id}" class="rounded-lg p-1 text-xs text-red-500 hover:bg-red-500/10 transition" title="حذف">🗑️</button>
+            </div>
+          </div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-slate-500 dark:text-slate-400">المبلغ:</span>
+            <strong class="${isToMe ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} text-base">${fmt(d.amount)}</strong>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   function renderGoals() {
     if (goals.length === 0) {
       els.goalsContainer.innerHTML = '<p class="text-sm text-slate-500 col-span-full text-center py-6">ما حطيت أهداف توفير لسا. ابدأ أضف هدفك القادم!</p>';
       return;
     }
-
     els.goalsContainer.innerHTML = goals.map(g => {
       const current = g.current || 0;
       const target = g.target || 1;
       const pct = Math.min(100, Math.max(0, (current / target) * 100));
       const isCompleted = current >= target;
-
       return `
-        <div class="relative overflow-hidden rounded-2xl border ${isCompleted ? 'border-emerald-500/60 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'border-slate-800 bg-slate-950/70'} p-4 transition-all hover:border-slate-700">
+        <div class="relative overflow-hidden rounded-2xl border ${isCompleted ? 'border-emerald-500/60 bg-emerald-50 dark:bg-emerald-950/20 shadow-md' : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/70'} p-4 transition-all">
           <div class="flex items-center justify-between mb-3">
             <div class="flex items-center gap-2">
               <span class="text-lg">${isCompleted ? '🎉' : '🎯'}</span>
-              <span class="font-semibold text-slate-100">${escapeHTML(g.title)}</span>
-              ${isCompleted ? '<span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-300">مكتمل</span>' : ''}
+              <span class="font-semibold text-slate-900 dark:text-slate-100">${escapeHTML(g.title)}</span>
+              ${isCompleted ? '<span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">مكتمل</span>' : ''}
             </div>
             <div class="flex items-center gap-1">
-              <button data-goal-id="${g.id}" class="edit-goal-btn rounded-lg p-1 text-xs text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 transition" title="تعديل الهدف">✏️</button>
-              <button data-goal-id="${g.id}" class="delete-goal-btn rounded-lg p-1 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition" title="حذف الهدف">🗑️</button>
+              <button data-goal-id="${g.id}" class="edit-goal-btn rounded-lg p-1 text-xs text-sky-600 dark:text-sky-400 hover:bg-sky-500/10 transition" title="تعديل الهدف">✏️</button>
+              <button data-goal-id="${g.id}" class="delete-goal-btn rounded-lg p-1 text-xs text-red-500 hover:bg-red-500/10 transition" title="حذف الهدف">🗑️</button>
             </div>
           </div>
-          
-          <div class="flex justify-between text-xs text-slate-400 mb-2">
-            <span>الموفر: <strong class="text-emerald-400">${fmt(current)}</strong></span>
-            <span>الهدف: <strong class="text-slate-200">${fmt(target)}</strong> (${pct.toFixed(0)}%)</span>
+          <div class="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-2">
+            <span>الموفر: <strong class="text-emerald-600 dark:text-emerald-400">${fmt(current)}</strong></span>
+            <span>الهدف: <strong class="text-slate-900 dark:text-slate-200">${fmt(target)}</strong> (${pct.toFixed(0)}%)</span>
           </div>
-
-          <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-900 mb-4 border border-slate-800/80">
-            <div class="h-full ${isCompleted ? 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-indigo-500'} rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+          <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-900 mb-4 border border-slate-300 dark:border-slate-800">
+            <div class="h-full ${isCompleted ? 'bg-emerald-500' : 'bg-indigo-600'} rounded-full transition-all duration-500" style="width: ${pct}%"></div>
           </div>
-
-          <div class="flex items-center gap-2">
-            <input type="number" min="1" step="0.01" placeholder="المبلغ" id="deposit-${g.id}"
-              class="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs outline-none focus:border-indigo-500 transition" />
-            <button data-action="deposit" data-goal-id="${g.id}" class="rounded-xl bg-emerald-600/20 border border-emerald-500/40 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-600 hover:text-white transition shrink-0" title="إيداع يخصم من المتبقي">
-              إيداع ➕
-            </button>
-            <button data-action="withdraw" data-goal-id="${g.id}" class="rounded-xl bg-red-600/20 border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-600 hover:text-white transition shrink-0" title="سحب يرجع للحساب">
-              سحب ➖
-            </button>
+          <div class="space-y-2">
+            <div class="flex items-center gap-2">
+              <input type="number" min="1" step="0.01" placeholder="المبلغ" id="deposit-${g.id}"
+                class="w-full rounded-xl border border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-xs outline-none focus:border-indigo-500 transition text-slate-900 dark:text-white" />
+            </div>
+            <div class="grid grid-cols-3 gap-1.5">
+              <button data-action="deposit_salary" data-goal-id="${g.id}" class="rounded-xl bg-emerald-600/10 border border-emerald-500/40 px-2 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white transition">
+                من الراتب 💵
+              </button>
+              <button data-action="deposit_external" data-goal-id="${g.id}" class="rounded-xl bg-sky-600/10 border border-sky-500/40 px-2 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 hover:bg-sky-600 hover:text-white transition">
+                من مدخراتي 💰
+              </button>
+              <button data-action="withdraw" data-goal-id="${g.id}" class="rounded-xl bg-red-600/10 border border-red-500/40 px-2 py-2 text-xs font-semibold text-red-700 dark:text-red-300 hover:bg-red-600 hover:text-white transition">
+                سحب ➖
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -544,52 +698,48 @@
 
   function sortedFiltered() {
     const f = els.filter.value;
-    return expenses
-      .filter(e => f === 'all' || e.category === f)
-      .sort((a, b) => b.date.localeCompare(a.date));
+    return expenses.filter(e => f === 'all' || e.category === f).sort((a, b) => b.date.localeCompare(a.date));
   }
 
   function renderList() {
     const list = sortedFiltered();
     els.countBadge.textContent = list.length;
-
-    const isEmpty = list.length === 0;
-    els.emptyState.classList.toggle('hidden', !isEmpty);
+    els.emptyState.classList.toggle('hidden', list.length !== 0);
 
     els.table.innerHTML = list.map(e => {
-      const meta = CATEGORY_META[e.category];
+      const meta = CATEGORY_META[e.category] || { ar: 'أخرى', color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20', icon: '📦' };
       return `
-        <tr class="row-enter hover:bg-slate-800/40">
-          <td class="py-3 pl-3 font-medium">${escapeHTML(e.title)}</td>
+        <tr class="row-enter hover:bg-slate-100 dark:hover:bg-slate-800/40">
+          <td class="py-3 pl-3 font-medium text-slate-900 dark:text-slate-100">${escapeHTML(e.title)}</td>
           <td class="py-3 pl-3">
             <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.color}">
               ${meta.icon} ${escapeHTML(meta.ar)}
             </span>
           </td>
-          <td class="py-3 pl-3 text-slate-400">${formatDate(e.date)}</td>
-          <td class="py-3 pl-3 text-left font-semibold text-orange-300">${fmt(e.amount)}</td>
-          <td class="py-3 text-left">
-            <button data-id="${e.id}" aria-label="حذف المصروف"
-              class="delete-btn rounded-lg px-2.5 py-1.5 text-red-400 transition hover:bg-red-500/10 hover:text-red-300">🗑️</button>
+          <td class="py-3 pl-3 text-slate-500 dark:text-slate-400">${formatDate(e.date)}</td>
+          <td class="py-3 pl-3 text-left font-semibold text-orange-600 dark:text-orange-300">${fmt(e.amount)}</td>
+          <td class="py-3 text-left flex items-center justify-end gap-1">
+            <button data-id="${e.id}" class="edit-expense-btn rounded-lg px-2 py-1.5 text-sky-600 dark:text-sky-400 transition hover:bg-sky-500/10" title="تعديل">✏️</button>
+            <button data-id="${e.id}" class="delete-btn rounded-lg px-2 py-1.5 text-red-500 transition hover:bg-red-500/10" title="حذف">🗑️</button>
           </td>
         </tr>`;
     }).join('');
 
     els.cards.innerHTML = list.map(e => {
-      const meta = CATEGORY_META[e.category];
+      const meta = CATEGORY_META[e.category] || { ar: 'أخرى', color: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border border-slate-500/20', icon: '📦' };
       return `
-        <li class="row-enter flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+        <li class="row-enter flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950/60 p-3 shadow-sm">
           <div class="min-w-0">
-            <p class="truncate font-medium">${escapeHTML(e.title)}</p>
+            <p class="truncate font-medium text-slate-900 dark:text-slate-100">${escapeHTML(e.title)}</p>
             <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
               <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${meta.color}">${meta.icon} ${escapeHTML(meta.ar)}</span>
-              <span class="text-slate-500">${formatDate(e.date)}</span>
+              <span class="text-slate-500 dark:text-slate-400">${formatDate(e.date)}</span>
             </div>
           </div>
           <div class="flex shrink-0 items-center gap-2">
-            <span class="font-semibold text-orange-300">${fmt(e.amount)}</span>
-            <button data-id="${e.id}" aria-label="حذف المصروف"
-              class="delete-btn rounded-lg px-2 py-1.5 text-red-400 transition hover:bg-red-500/10">🗑️</button>
+            <span class="font-semibold text-orange-600 dark:text-orange-300">${fmt(e.amount)}</span>
+            <button data-id="${e.id}" class="edit-expense-btn rounded-lg px-2 py-1.5 text-sky-600 dark:text-sky-400 transition hover:bg-sky-500/10" title="تعديل">✏️</button>
+            <button data-id="${e.id}" class="delete-btn rounded-lg px-2 py-1.5 text-red-500 transition hover:bg-red-500/10" title="حذف">🗑️</button>
           </div>
         </li>`;
     }).join('');
@@ -597,6 +747,8 @@
 
   function render() {
     renderSummary();
+    renderChart();
+    renderDebts();
     renderGoals();
     renderList();
     renderArchiveDropdown();
@@ -623,6 +775,7 @@
         date: new Date().toLocaleDateString('ar-SA')
       });
       expenses = [];
+      debts = [];
       saveUserData();
       render();
       alert('تم بدء الشهر الجديد وأرشفة البيانات السابقة بنجاح!');
@@ -634,20 +787,10 @@
     const title = els.title.value.trim();
     const amount = parseFloat(els.amount.value);
     const dateVal = els.date.value || todayStr();
-
     if (!title || !Number.isFinite(amount) || amount <= 0) return;
-
-    expenses.push({
-      id: uid(),
-      title,
-      amount: Math.round(amount * 100) / 100,
-      category: els.category.value,
-      date: dateVal
-    });
-
+    expenses.push({ id: uid(), title, amount: Math.round(amount * 100) / 100, category: els.category.value, date: dateVal });
     saveUserData();
     render();
-
     els.title.value = '';
     els.amount.value = '';
     els.date.value = todayStr();
@@ -656,6 +799,19 @@
 
   function deleteExpense(id) {
     expenses = expenses.filter(x => x.id !== id);
+    saveUserData();
+    render();
+  }
+
+  function editExpense(id) {
+    const ex = expenses.find(x => x.id === id);
+    if (!ex) return;
+    const newTitle = prompt('تعديل اسم المصروف:', ex.title);
+    if (newTitle === null) return;
+    const newAmount = parseFloat(prompt('تعديل المبلغ:', ex.amount));
+    if (!Number.isFinite(newAmount) || newAmount <= 0) return;
+    ex.title = newTitle.trim();
+    ex.amount = Math.round(newAmount * 100) / 100;
     saveUserData();
     render();
   }
@@ -669,12 +825,23 @@
     }
   }
 
+  function addDebt(e) {
+    e.preventDefault();
+    const person = els.debtPerson.value.trim();
+    const amount = parseFloat(els.debtAmount.value);
+    if (!person || !Number.isFinite(amount) || amount <= 0) return;
+    debts.push({ id: uid(), person, amount: Math.round(amount * 100) / 100, type: els.debtType.value, paid: false });
+    els.debtPerson.value = '';
+    els.debtAmount.value = '';
+    saveUserData();
+    render();
+  }
+
   function addGoal(e) {
     e.preventDefault();
     const title = els.goalTitle.value.trim();
     const target = parseFloat(els.goalTarget.value);
     if (!title || !Number.isFinite(target) || target <= 0) return;
-
     goals.push({ id: uid(), title, target: Math.round(target * 100) / 100, current: 0 });
     els.goalTitle.value = '';
     els.goalTarget.value = '';
@@ -689,25 +856,22 @@
       render();
       return;
     }
-
     const arch = archives[parseInt(val)];
     if (!arch) return;
-
-    let rows = arch.expenses.map(ex => `<tr><td class="py-1.5">${escapeHTML(ex.title)}</td><td class="py-1.5 text-orange-300 font-semibold">${fmt(ex.amount)}</td><td class="py-1.5 text-slate-400">${formatDate(ex.date)}</td></tr>`).join('');
+    let rows = arch.expenses.map(ex => `<tr><td class="py-1.5">${escapeHTML(ex.title)}</td><td class="py-1.5 text-orange-500 dark:text-orange-300 font-semibold">${fmt(ex.amount)}</td><td class="py-1.5 text-slate-500 dark:text-slate-400">${formatDate(ex.date)}</td></tr>`).join('');
     if (!rows) rows = '<tr><td colspan="3" class="py-3 text-center text-slate-500">لا توجد مصاريف مسجلة في هذا الشهر.</td></tr>';
-
     els.archiveDetails.innerHTML = `
-      <div class="rounded-xl bg-slate-950 p-4 border border-slate-800">
-        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-          <p class="font-bold text-slate-200">📁 ${escapeHTML(arch.monthName)}</p>
+      <div class="rounded-xl bg-slate-50 dark:bg-slate-950 p-4 border border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-200 dark:border-slate-800 pb-2">
+          <p class="font-bold text-slate-900 dark:text-slate-200">📁 ${escapeHTML(arch.monthName)}</p>
           <span class="text-xs text-slate-500">${arch.date}</span>
         </div>
         <div class="grid grid-cols-2 gap-2 text-xs mb-4">
-          <p>الميزانية: <strong class="text-sky-400">${fmt(arch.budget)}</strong></p>
-          <p>إجمالي المصاريف: <strong class="text-orange-400">${fmt(arch.spent)}</strong></p>
+          <p>الميزانية: <strong class="text-sky-600 dark:text-sky-400">${fmt(arch.budget)}</strong></p>
+          <p>إجمالي المصاريف: <strong class="text-orange-600 dark:text-orange-400">${fmt(arch.spent)}</strong></p>
         </div>
         <table class="w-full text-xs">
-          <thead><tr class="border-b border-slate-800 text-slate-500"><th class="text-right pb-1">الوصف</th><th class="text-right pb-1">المبلغ</th><th class="text-right pb-1">التاريخ</th></tr></thead>
+          <thead><tr class="border-b border-slate-200 dark:border-slate-800 text-slate-500"><th class="text-right pb-1">الوصف</th><th class="text-right pb-1">المبلغ</th><th class="text-right pb-1">التاريخ</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -717,22 +881,55 @@
   els.budgetForm.addEventListener('submit', setBudget);
   els.newMonthBtn.addEventListener('click', startNewMonth);
   els.expenseForm.addEventListener('submit', addExpense);
+  els.debtForm.addEventListener('submit', addDebt);
   els.goalForm.addEventListener('submit', addGoal);
   els.filter.addEventListener('change', renderList);
   els.clearAll.addEventListener('click', clearAll);
 
   [els.table, els.cards].forEach(container => {
     container.addEventListener('click', ev => {
-      const btn = ev.target.closest('.delete-btn');
-      if (btn) deleteExpense(btn.dataset.id);
+      const delBtn = ev.target.closest('.delete-btn');
+      const editBtn = ev.target.closest('.edit-expense-btn');
+      if (delBtn) deleteExpense(delBtn.dataset.id);
+      if (editBtn) editExpense(editBtn.dataset.id);
     });
+  });
+
+  els.debtsContainer.addEventListener('click', ev => {
+    const btn = ev.target.closest('[data-action]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    if (btn.dataset.action === 'delete_debt') {
+      debts = debts.filter(d => d.id !== id);
+    } else if (btn.dataset.action === 'toggle_debt') {
+      const d = debts.find(x => x.id === id);
+      if (d) {
+        d.paid = !d.paid;
+        if (d.type === 'on_me') {
+          if (d.paid) {
+            expenses.push({
+              id: 'debt_exp_' + d.id,
+              title: `تسديد دين لصالح: ${d.person}`,
+              amount: d.amount,
+              category: 'Bills',
+              date: todayStr(),
+              isDebtExpense: true,
+              debtId: d.id
+            });
+          } else {
+            expenses = expenses.filter(ex => ex.debtId !== d.id);
+          }
+        }
+      }
+    }
+    saveUserData();
+    render();
   });
 
   els.goalsContainer.addEventListener('click', ev => {
     const deleteBtn = ev.target.closest('.delete-goal-btn');
     const editBtn = ev.target.closest('.edit-goal-btn');
     const actionBtn = ev.target.closest('[data-action]');
-
     if (deleteBtn) {
       goals = goals.filter(g => g.id !== deleteBtn.dataset.goalId);
       saveUserData(); render();
@@ -750,12 +947,17 @@
       const input = document.getElementById(`deposit-${goal.id}`);
       const val = parseFloat(input.value);
       if (Number.isFinite(val) && val > 0) {
-        if (actionBtn.dataset.action === 'deposit') {
+        const actionType = actionBtn.dataset.action;
+        if (actionType === 'deposit_salary') {
           const spentSoFar = expenses.reduce((s, e) => s + e.amount, 0);
           if (val > (budget - spentSoFar) && budget > 0) { alert('المبلغ يتجاوز الرصيد المتبقي!'); return; }
-          expenses.push({ id: uid(), title: `توفير لصالح: ${goal.title}`, amount: val, category: 'Other', date: todayStr(), goalId: goal.id });
+          expenses.push({ id: uid(), title: `توفير من الراتب لصالح: ${goal.title}`, amount: val, category: 'Other', date: todayStr(), goalId: goal.id });
           goal.current += val;
-        } else {
+        } else if (actionType === 'deposit_external') {
+          if (!goal.externalDeposits) goal.externalDeposits = 0;
+          goal.externalDeposits += val;
+          goal.current += val;
+        } else if (actionType === 'withdraw') {
           if (val > goal.current) { alert('المبلغ المطلوب سحبه أكبر من المتوفر بالهدف!'); return; }
           goal.current -= val;
           let rem = val;
@@ -772,6 +974,7 @@
     }
   });
 
+  initTheme();
   checkAuth();
   els.date.value = todayStr();
 })();
