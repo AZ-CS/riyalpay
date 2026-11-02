@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ريال باي (RiyalPay) – إدارة ميزانية وأهداف الطالب</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .card-transition { transition: all 0.5s ease; }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .row-enter { animation: slideIn 0.25s ease-out; }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.7); cursor: pointer; }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased flex flex-col justify-between">
+
+  <!-- شاشة تسجيل الدخول / إنشاء الحساب -->
+  <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md px-4 hidden">
+    <div class="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
+      <div class="text-center mb-6">
+        <div class="text-4xl mb-2">💳</div>
+        <h2 id="authTitle" class="text-2xl font-bold tracking-tight">تسجيل الدخول إلى ريال باي</h2>
+        <p class="text-sm text-slate-400 mt-1">أدخل اسم المستخدم وكلمة المرور للمتابعة</p>
+      </div>
+      
+      <form id="authForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">اسم المستخدم</label>
+          <input id="authUsername" type="text" required placeholder="مثال: عبدالعزيز"
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none transition focus:border-indigo-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-400 mb-1">كلمة المرور</label>
+          <input id="authPassword" type="password" required placeholder="••••••••"
+            class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm outline-none transition focus:border-indigo-500" />
+        </div>
+        <p id="authError" class="hidden text-xs text-red-400 text-center"></p>
+
+        <button type="submit" id="authSubmitBtn"
+          class="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-[0.98]">
+          دخول 🚀
+        </button>
+      </form>
+
+      <div class="mt-6 text-center text-xs">
+        <button id="toggleAuthMode" type="button" class="text-indigo-400 hover:underline">
+          ليس لديك حساب؟ إنشاء حساب جديد
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- محتوى الموقع الأساسي -->
+  <div id="appContent" class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 w-full hidden">
+
+    <!-- الترويسة -->
+    <header class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">
+          💳 ريال <span class="text-indigo-400">باي</span>
+        </h1>
+        <p class="mt-1 text-sm text-slate-400">أهلاً بك يا <span id="userDisplayName" class="font-semibold text-indigo-300"></span>! نظم ميزانيتك بكل ذكاء.</p>
+      </div>
+
+      <!-- إدخال الميزانية + أزرار التحكم -->
+      <div class="flex flex-wrap items-end gap-2">
+        <form id="budgetForm" class="flex items-end gap-2">
+          <div class="w-40 sm:w-48">
+            <label for="budgetInput" class="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-400">
+              الميزانية الحالية (ر.س)
+            </label>
+            <input id="budgetInput" type="number" min="0" step="0.01" placeholder="مثال: 990"
+              class="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-slate-100 placeholder-slate-500 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+          </div>
+          <button type="submit"
+            class="rounded-xl bg-indigo-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-95">
+            حفظ
+          </button>
+        </form>
+        <button id="newMonthBtn" type="button"
+          class="rounded-xl border border-emerald-500/40 bg-emerald-950/30 px-4 py-2.5 font-semibold text-emerald-300 transition hover:bg-emerald-600/20 active:scale-95" title="أرشفة الشهر الحالي وبدء شهر جديد">
+          🔄 شهر جديد
+        </button>
+        <button id="logoutBtn" type="button"
+          class="rounded-xl border border-red-500/40 bg-red-950/30 px-3 py-2.5 font-semibold text-red-300 transition hover:bg-red-600/20 active:scale-95" title="تسجيل خروج">
+          🚪 خروج
+        </button>
+      </div>
+    </header>
+
+    <!-- بطاقات الملخص -->
+    <section class="mb-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-400">إجمالي الميزانية</p>
+          <span class="text-xl">🏦</span>
+        </div>
+        <p id="totalBudget" class="mt-3 text-3xl font-bold text-sky-400">0.00</p>
+      </div>
+
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium text-slate-400">إجمالي المصاريف</p>
+          <span class="text-xl">🔥</span>
+        </div>
+        <p id="totalSpent" class="mt-3 text-3xl font-bold text-orange-400">0.00</p>
+      </div>
+
+      <div id="balanceCard" class="card-transition rounded-2xl border p-5 shadow-lg">
+        <div class="flex items-center justify-between">
+          <p class="text-sm font-medium opacity-80">المتبقي</p>
+          <span id="balanceIcon" class="text-xl">✅</span>
+        </div>
+        <p id="remainingBalance" class="mt-3 text-3xl font-bold">0.00</p>
+        <p id="balanceStatus" class="mt-1 text-xs font-medium opacity-80"></p>
+        <div class="mt-3 h-2 w-full overflow-hidden rounded-full bg-black/30">
+          <div id="progressBar" class="h-full rounded-full transition-all duration-500" style="width:0%"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- قسم أهداف التوفير المستمرة -->
+    <section class="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <span>🎯</span> أهداف التوفير المستمرة
+        </h2>
+      </div>
+
+      <form id="goalForm" class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <input id="goalTitle" type="text" required placeholder="اسم الهدف (مثل: كرت شاشة جديد)"
+          class="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-600 outline-none transition focus:border-indigo-500" />
+        <input id="goalTarget" type="number" min="1" step="0.01" required placeholder="المبلغ المستهدف (ر.س)"
+          class="rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm placeholder-slate-600 outline-none transition focus:border-indigo-500" />
+        <button type="submit"
+          class="rounded-xl bg-emerald-600 py-2.5 font-semibold text-white shadow-lg transition hover:bg-emerald-500 active:scale-[0.98]">
+          إضافة هدف جديد
+        </button>
+      </form>
+
+      <div id="goalsContainer" class="grid grid-cols-1 gap-4 md:grid-cols-2"></div>
+    </section>
+
+    <!-- سجل الأرشيف للشهور السابقة -->
+    <section class="mb-8 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="text-lg font-semibold flex items-center gap-2">
+          <span>📂</span> أرشيف الشهور السابقة
+        </h2>
+        <select id="archiveSelect"
+          class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
+          <option value="current">الشهر الحالي (نشط)</option>
+        </select>
+      </div>
+      <div id="archiveDetails" class="text-sm text-slate-400">
+        اختر شهراً من القائمة أعلاه لاستعراض ملخص ومصاريفه السابقة.
+      </div>
+    </section>
+
+    <!-- نموذج الإضافة + قائمة العمليات -->
+    <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+
+      <div class="lg:col-span-1">
+        <form id="expenseForm" class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg lg:sticky lg:top-6">
+          <h2 class="mb-4 text-lg font-semibold">➕ إضافة مصروف</h2>
+
+          <div class="space-y-4">
+            <div>
+              <label for="title" class="mb-1 block text-sm text-slate-400">الاسم / الوصف</label>
+              <input id="title" type="text" maxlength="60" required placeholder="مثال: قهوة، كتاب جامعي..."
+                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 placeholder-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+            </div>
+
+            <div>
+              <label for="amount" class="mb-1 block text-sm text-slate-400">المبلغ (ر.س)</label>
+              <input id="amount" type="number" min="0.01" step="0.01" required placeholder="0.00"
+                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 placeholder-slate-600 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+            </div>
+
+            <div>
+              <label for="category" class="mb-1 block text-sm text-slate-400">التصنيف</label>
+              <select id="category"
+                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40">
+                <option value="Food/Coffee">🍔 أكل / قهوة</option>
+                <option value="Study & Books">📚 دراسة وكتب</option>
+                <option value="Transport">🚌 مواصلات</option>
+                <option value="Entertainment">🎮 ترفيه</option>
+                <option value="Bills">🧾 فواتير</option>
+                <option value="Other">📦 أخرى</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="date" class="mb-1 block text-sm text-slate-400">التاريخ (تلقائي بيوم اليوم)</label>
+              <input id="date" type="date" required
+                class="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/40" />
+            </div>
+
+            <p id="formError" class="hidden text-sm text-red-400"></p>
+
+            <button type="submit"
+              class="w-full rounded-xl bg-indigo-600 py-3 font-semibold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-500 active:scale-[0.98]">
+              إضافة المصروف
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="lg:col-span-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
+          <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h2 class="text-lg font-semibold">🧾 العمليات
+              <span id="countBadge" class="mr-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">0</span>
+            </h2>
+            <div class="flex items-center gap-2">
+              <select id="filterCategory"
+                class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm outline-none focus:border-indigo-500">
+                <option value="all">جميع التصنيفات</option>
+                <option value="Food/Coffee">أكل / قهوة</option>
+                <option value="Study & Books">دراسة وكتب</option>
+                <option value="Transport">مواصلات</option>
+                <option value="Entertainment">ترفيه</option>
+                <option value="Bills">فواتير</option>
+                <option value="Other">أخرى</option>
+              </select>
+              <button id="clearAll" type="button"
+                class="rounded-lg border border-red-500/40 px-3 py-1.5 text-sm text-red-400 transition hover:bg-red-500/10">
+                حذف الكل
+              </button>
+            </div>
+          </div>
+
+          <div id="emptyState" class="hidden py-12 text-center">
+            <p class="text-5xl">🪙</p>
+            <p class="mt-3 text-slate-400">ما فيه مصاريف مسجلة. ممتاز.. أو إنك لسا ما بديت تسجل.</p>
+          </div>
+
+          <!-- جدول سطح المكتب -->
+          <div id="tableWrap" class="overflow-x-auto">
+            <table class="w-full text-right text-sm">
+              <thead class="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th class="py-3 pl-3">الاسم</th>
+                  <th class="py-3 pl-3">التصنيف</th>
+                  <th class="py-3 pl-3">التاريخ</th>
+                  <th class="py-3 pl-3 text-left">المبلغ</th>
+                  <th class="py-3 text-left"></th>
+                </tr>
+              </thead>
+              <tbody id="expenseTable" class="divide-y divide-slate-800"></tbody>
+            </table>
+          </div>
+
+          <!-- قائمة الجوال -->
+          <ul id="expenseCards" class="space-y-3 mt-3 md:hidden"></ul>
+        </div>
+      </div>
+    </section>
+
+    <footer class="mt-10 text-center text-xs text-slate-600">
+      البيانات تُحفظ في متصفحك فقط (localStorage). مسح بيانات المتصفح سيؤدي لحذفها.
+    </footer>
+  </div>
+
+<script>
+(() => {
+  'use strict';
+
+  let isRegisterMode = false;
+  let currentUser = '';
+  let budget = 0;
+  let expenses = [];
+  let goals = [];
+  let archives = [];
+
+  const $ = id => document.getElementById(id);
+  const els = {
+    loginScreen: $('loginScreen'), authForm: $('authForm'), authTitle: $('authTitle'),
+    authUsername: $('authUsername'), authPassword: $('authPassword'), authError: $('authError'),
+    authSubmitBtn: $('authSubmitBtn'), toggleAuthMode: $('toggleAuthMode'),
+    appContent: $('appContent'), userDisplayName: $('userDisplayName'), logoutBtn: $('logoutBtn'),
+    budgetForm: $('budgetForm'), budgetInput: $('budgetInput'),
+    totalBudget: $('totalBudget'), totalSpent: $('totalSpent'),
+    remaining: $('remainingBalance'), balanceCard: $('balanceCard'),
+    balanceIcon: $('balanceIcon'), balanceStatus: $('balanceStatus'),
+    progressBar: $('progressBar'),
+    expenseForm: $('expenseForm'), title: $('title'), amount: $('amount'),
+    category: $('category'), date: $('date'), formError: $('formError'),
+    table: $('expenseTable'), cards: $('expenseCards'),
+    tableWrap: $('tableWrap'), emptyState: $('emptyState'),
+    countBadge: $('countBadge'), filter: $('filterCategory'), clearAll: $('clearAll'),
+    goalForm: $('goalForm'), goalTitle: $('goalTitle'), goalTarget: $('goalTarget'),
+    goalsContainer: $('goalsContainer'), newMonthBtn: $('newMonthBtn'),
+    archiveSelect: $('archiveSelect'), archiveDetails: $('archiveDetails')
+  };
+
+  const todayStr = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 10);
+  };
+
+  const uid = () =>
+    (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+  const escapeHTML = str =>
+    String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const formatDate = iso => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('ar-SA', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
+
+  function checkAuth() {
+    currentUser = localStorage.getItem('riyalpay_logged_user');
+    if (!currentUser) {
+      els.loginScreen.classList.remove('hidden');
+      els.appContent.classList.add('hidden');
+    } else {
+      els.loginScreen.classList.add('hidden');
+      els.appContent.classList.remove('hidden');
+      els.userDisplayName.textContent = currentUser;
+      loadUserData(currentUser);
+      render();
+    }
+  }
+
+  els.toggleAuthMode.addEventListener('click', () => {
+    isRegisterMode = !isRegisterMode;
+    els.authTitle.textContent = isRegisterMode ? 'إنشاء حساب جديد في ريال باي' : 'تسجيل الدخول إلى ريال باي';
+    els.authSubmitBtn.textContent = isRegisterMode ? 'تسجيل وحفظ 📝' : 'دخول 🚀';
+    els.toggleAuthMode.textContent = isRegisterMode ? 'لديك حساب بالفعل؟ تسجيل الدخول' : 'ليس لديك حساب؟ إنشاء حساب جديد';
+    els.authError.classList.add('hidden');
+  });
+
+  els.authForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const user = els.authUsername.value.trim();
+    const pass = els.authPassword.value.trim();
+    const usersDB = JSON.parse(localStorage.getItem('riyalpay_users_db') || '{}');
+
+    if (isRegisterMode) {
+      if (usersDB[user]) {
+        els.authError.textContent = 'اسم المستخدم موجود مسبقاً، اختر اسمًا آخر.';
+        els.authError.classList.remove('hidden');
+        return;
+      }
+      usersDB[user] = { password: pass };
+      localStorage.setItem('riyalpay_users_db', JSON.stringify(usersDB));
+      localStorage.setItem('riyalpay_logged_user', user);
+      checkAuth();
+    } else {
+      if (!usersDB[user] || usersDB[user].password !== pass) {
+        els.authError.textContent = 'اسم المستخدم أو كلمة المرور غير صحيحة.';
+        els.authError.classList.remove('hidden');
+        return;
+      }
+      localStorage.setItem('riyalpay_logged_user', user);
+      checkAuth();
+    }
+  });
+
+  els.logoutBtn.addEventListener('click', () => {
+    if (confirm('هل تريد تسجيل الخروج؟')) {
+      localStorage.removeItem('riyalpay_logged_user');
+      checkAuth();
+    }
+  });
+
+  function saveUserData() {
+    if (!currentUser) return;
+    const data = { budget, expenses, goals, archives };
+    localStorage.setItem(`riyalpay_data_${currentUser}`, JSON.stringify(data));
+  }
+
+  function loadUserData(username) {
+    try {
+      const raw = localStorage.getItem(`riyalpay_data_${username}`);
+      if (raw) {
+        const data = JSON.parse(raw);
+        budget = Number.isFinite(data.budget) ? data.budget : 990;
+        expenses = Array.isArray(data.expenses) ? data.expenses : [];
+        goals = Array.isArray(data.goals) ? data.goals : [];
+        archives = Array.isArray(data.archives) ? data.archives : [];
+      } else {
+        budget = 990;
+        expenses = [];
+        goals = [];
+        archives = [];
+      }
+    } catch (e) {
+      budget = 990;
+      expenses = [];
+      goals = [];
+      archives = [];
+    }
+  }
+
+  const fmt = n => Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ر.س';
+
+  function renderArchiveDropdown() {
+    let html = '<option value="current">الشهر الحالي (نشط)</option>';
+    archives.forEach((arch, idx) => {
+      html += `<option value="${idx}">${escapeHTML(arch.monthName)} (ميزانية: ${fmt(arch.budget)})</option>`;
+    });
+    els.archiveSelect.innerHTML = html;
+  }
+
+  function renderSummary() {
+    const spent = expenses.reduce((sum, e) => sum + e.amount, 0);
+    const remaining = budget - spent;
+
+    els.totalBudget.textContent = fmt(budget);
+    els.totalSpent.textContent = fmt(spent);
+    els.remaining.textContent = fmt(remaining);
+
+    const ratio = budget > 0 ? remaining / budget : (remaining < 0 ? -1 : 0);
+
+    let state;
+    if (budget === 0 && spent === 0) {
+      state = { card: 'border-slate-700 bg-slate-900 text-slate-100', bar: 'bg-slate-500', icon: '🎯', msg: 'حدد ميزانيتك عشان تبدأ' };
+    } else if (remaining < 0) {
+      state = { card: 'border-red-500/60 bg-red-950/60 text-red-200 shadow-[0_0_35px_rgba(239,68,68,0.45)]', bar: 'bg-red-500', icon: '🚨', msg: `متعدي الميزانية بـ ${fmt(Math.abs(remaining))}!` };
+    } else if (ratio <= 0.10) {
+      state = { card: 'border-red-500/60 bg-red-950/50 text-red-200 shadow-[0_0_30px_rgba(239,68,68,0.35)]', bar: 'bg-red-500', icon: '⚠️', msg: 'الطفارا تقرع أجراس الخطر! خفف صرف.' };
+    } else if (ratio <= 0.30) {
+      state = { card: 'border-yellow-500/60 bg-yellow-950/40 text-yellow-200 shadow-[0_0_30px_rgba(234,179,8,0.30)]', bar: 'bg-yellow-400', icon: '😬', msg: 'الميزانية تقل، انتبه لخطواتك.' };
+    } else {
+      state = { card: 'border-emerald-500/60 bg-emerald-950/40 text-emerald-200 shadow-[0_0_30px_rgba(16,185,129,0.30)]', bar: 'bg-emerald-400', icon: '✅', msg: 'أنت في السيف زون (منطقة الأمان).' };
+    }
+
+    els.balanceCard.className = `card-transition rounded-2xl border p-5 shadow-lg ${state.card}`;
+    els.balanceIcon.textContent = state.icon;
+    els.balanceStatus.textContent = state.msg;
+
+    const pct = budget > 0 ? Math.min(100, Math.max(0, (spent / budget) * 100)) : (spent > 0 ? 100 : 0);
+    els.progressBar.className = `h-full rounded-full transition-all duration-500 ${state.bar}`;
+    els.progressBar.style.width = pct + '%';
+  }
+
+  function renderGoals() {
+    if (goals.length === 0) {
+      els.goalsContainer.innerHTML = '<p class="text-sm text-slate-500 col-span-full text-center py-6">ما حطيت أهداف توفير لسا. ابدأ أضف هدفك القادم!</p>';
+      return;
+    }
+
+    els.goalsContainer.innerHTML = goals.map(g => {
+      const current = g.current || 0;
+      const target = g.target || 1;
+      const pct = Math.min(100, Math.max(0, (current / target) * 100));
+      const isCompleted = current >= target;
+
+      return `
+        <div class="relative overflow-hidden rounded-2xl border ${isCompleted ? 'border-emerald-500/60 bg-emerald-950/20 shadow-[0_0_20px_rgba(16,185,129,0.15)]' : 'border-slate-800 bg-slate-950/70'} p-4 transition-all hover:border-slate-700">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">${isCompleted ? '🎉' : '🎯'}</span>
+              <span class="font-semibold text-slate-100">${escapeHTML(g.title)}</span>
+              ${isCompleted ? '<span class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-300">مكتمل</span>' : ''}
+            </div>
+            <div class="flex items-center gap-1">
+              <button data-goal-id="${g.id}" class="edit-goal-btn rounded-lg p-1 text-xs text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 transition" title="تعديل الهدف">✏️</button>
+              <button data-goal-id="${g.id}" class="delete-goal-btn rounded-lg p-1 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-300 transition" title="حذف الهدف">🗑️</button>
+            </div>
+          </div>
+          
+          <div class="flex justify-between text-xs text-slate-400 mb-2">
+            <span>الموفر: <strong class="text-emerald-400">${fmt(current)}</strong></span>
+            <span>الهدف: <strong class="text-slate-200">${fmt(target)}</strong> (${pct.toFixed(0)}%)</span>
+          </div>
+
+          <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-900 mb-4 border border-slate-800/80">
+            <div class="h-full ${isCompleted ? 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-indigo-500'} rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="number" min="1" step="0.01" placeholder="المبلغ" id="deposit-${g.id}"
+              class="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs outline-none focus:border-indigo-500 transition" />
+            <button data-action="deposit" data-goal-id="${g.id}" class="rounded-xl bg-emerald-600/20 border border-emerald-500/40 px-3 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-600 hover:text-white transition shrink-0" title="إيداع يخصم من المتبقي">
+              إيداع ➕
+            </button>
+            <button data-action="withdraw" data-goal-id="${g.id}" class="rounded-xl bg-red-600/20 border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-600 hover:text-white transition shrink-0" title="سحب يرجع للحساب">
+              سحب ➖
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function sortedFiltered() {
+    const f = els.filter.value;
+    return expenses
+      .filter(e => f === 'all' || e.category === f)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  function renderList() {
+    const list = sortedFiltered();
+    els.countBadge.textContent = list.length;
+
+    const isEmpty = list.length === 0;
+    els.emptyState.classList.toggle('hidden', !isEmpty);
+
+    els.table.innerHTML = list.map(e => {
+      const meta = CATEGORY_META[e.category];
+      return `
+        <tr class="row-enter hover:bg-slate-800/40">
+          <td class="py-3 pl-3 font-medium">${escapeHTML(e.title)}</td>
+          <td class="py-3 pl-3">
+            <span class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${meta.color}">
+              ${meta.icon} ${escapeHTML(meta.ar)}
+            </span>
+          </td>
+          <td class="py-3 pl-3 text-slate-400">${formatDate(e.date)}</td>
+          <td class="py-3 pl-3 text-left font-semibold text-orange-300">${fmt(e.amount)}</td>
+          <td class="py-3 text-left">
+            <button data-id="${e.id}" aria-label="حذف المصروف"
+              class="delete-btn rounded-lg px-2.5 py-1.5 text-red-400 transition hover:bg-red-500/10 hover:text-red-300">🗑️</button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    els.cards.innerHTML = list.map(e => {
+      const meta = CATEGORY_META[e.category];
+      return `
+        <li class="row-enter flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+          <div class="min-w-0">
+            <p class="truncate font-medium">${escapeHTML(e.title)}</p>
+            <div class="mt-1 flex flex-wrap items-center gap-2 text-xs">
+              <span class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${meta.color}">${meta.icon} ${escapeHTML(meta.ar)}</span>
+              <span class="text-slate-500">${formatDate(e.date)}</span>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <span class="font-semibold text-orange-300">${fmt(e.amount)}</span>
+            <button data-id="${e.id}" aria-label="حذف المصروف"
+              class="delete-btn rounded-lg px-2 py-1.5 text-red-400 transition hover:bg-red-500/10">🗑️</button>
+          </div>
+        </li>`;
+    }).join('');
+  }
+
+  function render() {
+    renderSummary();
+    renderGoals();
+    renderList();
+    renderArchiveDropdown();
+    if (budget > 0) els.budgetInput.value = budget;
+  }
+
+  function setBudget(e) {
+    e.preventDefault();
+    const val = parseFloat(els.budgetInput.value);
+    if (!Number.isFinite(val) || val < 0) return;
+    budget = Math.round(val * 100) / 100;
+    saveUserData();
+    render();
+  }
+
+  function startNewMonth() {
+    const monthName = `شهر ${new Date().toLocaleString('ar-SA', { month: 'long', year: 'numeric' })} (${archives.length + 1})`;
+    if (confirm(`هل تريد أرشفة الشهر الحالي وبدء شهر جديد؟`)) {
+      archives.push({
+        monthName: monthName,
+        budget: budget,
+        spent: expenses.reduce((s, e) => s + e.amount, 0),
+        expenses: [...expenses],
+        date: new Date().toLocaleDateString('ar-SA')
+      });
+      expenses = [];
+      saveUserData();
+      render();
+      alert('تم بدء الشهر الجديد وأرشفة البيانات السابقة بنجاح!');
+    }
+  }
+
+  function addExpense(e) {
+    e.preventDefault();
+    const title = els.title.value.trim();
+    const amount = parseFloat(els.amount.value);
+    const dateVal = els.date.value || todayStr();
+
+    if (!title || !Number.isFinite(amount) || amount <= 0) return;
+
+    expenses.push({
+      id: uid(),
+      title,
+      amount: Math.round(amount * 100) / 100,
+      category: els.category.value,
+      date: dateVal
+    });
+
+    saveUserData();
+    render();
+
+    els.title.value = '';
+    els.amount.value = '';
+    els.date.value = todayStr(); // إعادة ضبط التاريخ لتاريخ اليوم تلقائياً
+    els.title.focus();
+  }
+
+  function deleteExpense(id) {
+    expenses = expenses.filter(x => x.id !== id);
+    saveUserData();
+    render();
+  }
+
+  function clearAll() {
+    if (!expenses.length) return;
+    if (confirm('هل تريد حذف جميع عمليات الشهر الحالي؟')) {
+      expenses = [];
+      saveUserData();
+      render();
+    }
+  }
+
+  function addGoal(e) {
+    e.preventDefault();
+    const title = els.goalTitle.value.trim();
+    const target = parseFloat(els.goalTarget.value);
+    if (!title || !Number.isFinite(target) || target <= 0) return;
+
+    goals.push({ id: uid(), title, target: Math.round(target * 100) / 100, current: 0 });
+    els.goalTitle.value = '';
+    els.goalTarget.value = '';
+    saveUserData();
+    render();
+  }
+
+  els.archiveSelect.addEventListener('change', e => {
+    const val = e.target.value;
+    if (val === 'current') {
+      els.archiveDetails.innerHTML = 'اختر شهراً من القائمة أعلاه لاستعراض ملخص ومصاريفه السابقة.';
+      render();
+      return;
+    }
+
+    const arch = archives[parseInt(val)];
+    if (!arch) return;
+
+    let rows = arch.expenses.map(ex => `<tr><td class="py-1.5">${escapeHTML(ex.title)}</td><td class="py-1.5 text-orange-300 font-semibold">${fmt(ex.amount)}</td><td class="py-1.5 text-slate-400">${formatDate(ex.date)}</td></tr>`).join('');
+    if (!rows) rows = '<tr><td colspan="3" class="py-3 text-center text-slate-500">لا توجد مصاريف مسجلة في هذا الشهر.</td></tr>';
+
+    els.archiveDetails.innerHTML = `
+      <div class="rounded-xl bg-slate-950 p-4 border border-slate-800">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+          <p class="font-bold text-slate-200">📁 ${escapeHTML(arch.monthName)}</p>
+          <span class="text-xs text-slate-500">${arch.date}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs mb-4">
+          <p>الميزانية: <strong class="text-sky-400">${fmt(arch.budget)}</strong></p>
+          <p>إجمالي المصاريف: <strong class="text-orange-400">${fmt(arch.spent)}</strong></p>
+        </div>
+        <table class="w-full text-xs">
+          <thead><tr class="border-b border-slate-800 text-slate-500"><th class="text-right pb-1">الوصف</th><th class="text-right pb-1">المبلغ</th><th class="text-right pb-1">التاريخ</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  });
+
+  els.budgetForm.addEventListener('submit', setBudget);
+  els.newMonthBtn.addEventListener('click', startNewMonth);
+  els.expenseForm.addEventListener('submit', addExpense);
+  els.goalForm.addEventListener('submit', addGoal);
+  els.filter.addEventListener('change', renderList);
+  els.clearAll.addEventListener('click', clearAll);
+
+  [els.table, els.cards].forEach(container => {
+    container.addEventListener('click', ev => {
+      const btn = ev.target.closest('.delete-btn');
+      if (btn) deleteExpense(btn.dataset.id);
+    });
+  });
+
+  els.goalsContainer.addEventListener('click', ev => {
+    const deleteBtn = ev.target.closest('.delete-goal-btn');
+    const editBtn = ev.target.closest('.edit-goal-btn');
+    const actionBtn = ev.target.closest('[data-action]');
+
+    if (deleteBtn) {
+      goals = goals.filter(g => g.id !== deleteBtn.dataset.goalId);
+      saveUserData(); render();
+    }
+    if (editBtn) {
+      const goal = goals.find(g => g.id === editBtn.dataset.goalId);
+      if (goal) {
+        const nt = prompt('تعديل اسم الهدف:', goal.title);
+        const ntgt = parseFloat(prompt('تعديل المبلغ المستهدف:', goal.target));
+        if (nt && Number.isFinite(ntgt)) { goal.title = nt.trim(); goal.target = ntgt; saveUserData(); render(); }
+      }
+    }
+    if (actionBtn) {
+      const goal = goals.find(g => g.id === actionBtn.dataset.goalId);
+      const input = document.getElementById(`deposit-${goal.id}`);
+      const val = parseFloat(input.value);
+      if (Number.isFinite(val) && val > 0) {
+        if (actionBtn.dataset.action === 'deposit') {
+          const spentSoFar = expenses.reduce((s, e) => s + e.amount, 0);
+          if (val > (budget - spentSoFar) && budget > 0) { alert('المبلغ يتجاوز الرصيد المتبقي!'); return; }
+          expenses.push({ id: uid(), title: `توفير لصالح: ${goal.title}`, amount: val, category: 'Other', date: todayStr(), goalId: goal.id });
+          goal.current += val;
+        } else {
+          if (val > goal.current) { alert('المبلغ المطلوب سحبه أكبر من المتوفر بالهدف!'); return; }
+          goal.current -= val;
+          let rem = val;
+          expenses = expenses.filter(exp => {
+            if (exp.goalId === goal.id && rem > 0) {
+              if (exp.amount <= rem) { rem -= exp.amount; return false; }
+              else { exp.amount -= rem; rem = 0; return true; }
+            }
+            return true;
+          });
+        }
+        input.value = ''; saveUserData(); render();
+      }
+    }
+  });
+
+  checkAuth();
+  els.date.value = todayStr(); // ضبط خانة التاريخ تلقائياً بيوم اليوم عند تشغيل الصفحة
+})();
+</script>
+</body>
+</html>
